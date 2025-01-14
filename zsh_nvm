@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Source nvm
+if [ -z "$NVM_DIR" ]; then
+  export NVM_DIR="$HOME/.nvm"
+fi
+
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  . "$NVM_DIR/nvm.sh"
+else
+  echo "Error: nvm.sh not found in $NVM_DIR"
+  exit 1
+fi
+
+# Bash completion (optional)
+if [ -s "$NVM_DIR/bash_completion" ]; then
+  . "$NVM_DIR/bash_completion"
+fi
+
+function setNpmrc() {
+  if [ ! -f .npmrc ]; then
+    touch .npmrc
+    echo "engine-strict=true" > .npmrc
+  fi
+}
+
+setNpmrc
+
+function getNodeVersionFromPackageJson() {
+  if [ -f package.json ]; then
+    node_version=$(jq -r '.engines.node' package.json)
+    if [ -z "$node_version" ]; then
+      echo "package.json has no node string"
+      exit 1
+    fi
+    new=$(echo $node_version | sed 's/[^0-9.]//g')
+    echo $new
+  else
+    exit 1
+  fi
+}
+
+function load_nvmrc() {
+  local node_version="$(nvm version)"
+  node_package=$(getNodeVersionFromPackageJson)
+  echo "node_version: $node_version"
+  echo "node_package: $node_package"
+  if [ "$node_version" != "$node_package" ]; then
+    nvm install "$node_package"
+    nvm use "$node_package"
+  fi
+  exec zsh
+}
+if [ -f package.json ]; then
+  load_nvmrc
+else
+  echo "No package.json found"
+fi
